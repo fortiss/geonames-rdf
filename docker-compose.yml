@@ -62,7 +62,7 @@ services:
 
   # QEndpoint
   qendpoint:
-    image: qacompany/qendpoint
+    image: qacompany/qendpoint:2.5.4
     container_name: qendpoint
     ports:
       - "7400:1234"

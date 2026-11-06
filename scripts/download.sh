@@ -14,24 +14,40 @@ mkdir -p "$DATA_DIR" "$DOWNLOAD_DIR"
 
 
 # --- Download only if missing or newer ---
+#     If geonames.org is unreachable and a local copy exists, fall back to it.
+#     Downloads go to a .part file first so a failed transfer never corrupts the cached copy.
+#     After the first unreachable check, remaining cached files are used without retrying.
+CURL_OPTS=(-sSfR --connect-timeout 30 --speed-limit 1024 --speed-time 60 --retry 2)
+GEONAMES_UNREACHABLE=false
 conditional_download() {
     local url=$1
     local local_file=$2
+    local tmp_file="$local_file.part"
     echo -n "Checking $local_file... "
-    if [ -f "$local_file" ]; then
-        local before=$(stat -c %Y "$local_file")
-        curl -sSfR -z "$local_file" -o "$local_file" "$url"
-        local after=$(stat -c %Y "$local_file")
-        if [ "$before" != "$after" ]; then
-            echo "updated"
+    rm -f "$tmp_file"
+    if [ -f "$local_file" ] && [ "$GEONAMES_UNREACHABLE" = "true" ]; then
+        echo "WARNING: geonames.org unreachable, using cached copy from $(date -r "$local_file" +%F)"
+    elif [ -f "$local_file" ]; then
+        if curl "${CURL_OPTS[@]}" -z "$local_file" -o "$tmp_file" "$url"; then
+            if [ -s "$tmp_file" ]; then
+                mv "$tmp_file" "$local_file"
+                echo "updated"
+            else
+                rm -f "$tmp_file"
+                echo "already current"
+            fi
         else
-            echo "already current"
+            rm -f "$tmp_file"
+            GEONAMES_UNREACHABLE=true
+            echo "WARNING: could not reach $url, using cached copy from $(date -r "$local_file" +%F)"
         fi
     else
-        if curl -sSfR -o "$local_file" "$url"; then
+        if curl "${CURL_OPTS[@]}" -o "$tmp_file" "$url" && [ -s "$tmp_file" ]; then
+            mv "$tmp_file" "$local_file"
             echo "downloaded"
         else
-            echo "error"
+            rm -f "$tmp_file"
+            echo "error: could not download $url and no cached copy exists"
             exit 1
         fi
     fi

@@ -10,7 +10,8 @@ DATA_DIR="$ROOT_DIR/data"
 BIN_DIR="$ROOT_DIR/bin"
 CONFIG_DIR="$ROOT_DIR/config"
 OUTPUT_DIR="$ROOT_DIR/output"
-SPARQL_ANYTHING_JAR="sparql-anything-v1.0.0.jar"
+SPARQL_ANYTHING_VERSION="${SPARQL_ANYTHING_VERSION:-v1.3.0}"
+SPARQL_ANYTHING_JAR="sparql-anything-$SPARQL_ANYTHING_VERSION.jar"
 CURRENT_DATE=$(date +%F)
 
 
@@ -22,7 +23,7 @@ mkdir -p "$OUTPUT_DIR" "$BIN_DIR"
 echo "[transform 2/8] Checking for SPARQL Anything JAR..."
 if [ ! -f "$BIN_DIR/$SPARQL_ANYTHING_JAR" ]; then
     echo "  - Downloading SPARQL Anything..."
-    curl -sSL "https://github.com/SPARQL-Anything/sparql.anything/releases/download/v1.0.0/${SPARQL_ANYTHING_JAR}" \
+    curl -sSL "https://github.com/SPARQL-Anything/sparql.anything/releases/download/${SPARQL_ANYTHING_VERSION}/${SPARQL_ANYTHING_JAR}" \
       -o "$BIN_DIR/${SPARQL_ANYTHING_JAR}"
 fi
 
@@ -115,7 +116,7 @@ if [ -f "$ttl_file" ]; then
   sed -i.bak "s|\[VERSIONED_FILE\]|${versioned_ttl}.zip|g" "$ROOT_DIR/web/index.html" && rm -f "$ROOT_DIR/web/index.html.bak"
   
    # Refresh countryInfo to map country code to country name
-  curl -sSfR -z "$DATA_DIR/downloads/countryInfo.txt" -o "$DATA_DIR/downloads/countryInfo.txt" "https://download.geonames.org/export/dump/countryInfo.txt" || true
+  curl -sSfR --connect-timeout 30 --max-time 120 -z "$DATA_DIR/downloads/countryInfo.txt" -o "$DATA_DIR/downloads/countryInfo.txt" "https://download.geonames.org/export/dump/countryInfo.txt" || true
 
   if [ "$COUNTRY_CODE" = "allCountries" ]; then
     COUNTRY_NAME="All Countries"
